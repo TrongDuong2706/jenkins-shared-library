@@ -12,6 +12,7 @@
  * Optional:
  *   composeFile          Local Compose file to upload (defaults to docker-compose.yml)
  *   deployDirectory      Directory on the deploy server (defaults to /opt/app)
+ *   composeProjectName   Existing Docker Compose project to update (optional)
  *   service              Service to update (defaults to frontend)
  *   port                 SSH port (defaults to 22)
  *   registry             Registry for a remote `docker login` (defaults to docker.io)
@@ -24,6 +25,7 @@ def call(Map config = [:]) {
 
     String composeFile = (config.composeFile ?: 'docker-compose.yml').toString()
     String deployDirectory = (config.deployDirectory ?: '/opt/app').toString()
+    String composeProjectName = (config.composeProjectName ?: '').toString().trim()
     String service = (config.service ?: 'frontend').toString()
     String port = (config.port ?: '22').toString()
     String registry = (config.registry ?: 'docker.io').toString()
@@ -37,6 +39,11 @@ def call(Map config = [:]) {
     if (!(port ==~ /^[0-9]{1,5}$/)) {
         error "Invalid SSH port: ${port}"
     }
+    if (composeProjectName && !(composeProjectName ==~ /^[a-z0-9][a-z0-9_-]*$/)) {
+        error "Invalid Docker Compose project name: ${composeProjectName}"
+    }
+
+    String composeProjectOption = composeProjectName ? "--project-name ${shellQuote(composeProjectName)}" : ''
 
     String remoteScript = """set -eu
 cd ${shellQuote(deployDirectory)}
@@ -47,7 +54,7 @@ services:
     image: \${FRONTEND_IMAGE}
 EOF
 docker pull ${shellQuote(config.image.toString())}
-docker compose --env-file .jenkins.env --file docker-compose.yml --file docker-compose.jenkins.yml up --detach --no-deps --no-build ${shellQuote(service)}
+docker compose ${composeProjectOption} --env-file .jenkins.env --file docker-compose.yml --file docker-compose.jenkins.yml up --detach --no-deps --no-build ${shellQuote(service)}
 """
 
     withCredentials([sshUserPrivateKey(
