@@ -88,7 +88,9 @@ docker compose ${composeProjectOption} --env-file .jenkins.env --file docker-com
                 set -eu
                 ssh -i \"\$DEPLOY_SSH_KEY\" -p \"\$DEPLOY_PORT\" \\
                   -o BatchMode=yes -o StrictHostKeyChecking=yes \\
-                  \"\$DEPLOY_SSH_USER@\$DEPLOY_HOST\" ${shellQuote(remoteScript)}
+                  \"\$DEPLOY_SSH_USER@\$DEPLOY_HOST\" 'bash -se' <<'REMOTE_SCRIPT'
+${remoteScript}
+REMOTE_SCRIPT
             """.stripIndent()
         }
     }
